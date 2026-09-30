@@ -14,7 +14,6 @@ Sistema de captação de leads que funciona ponta a ponta: **banco de dados → 
 
 - **API publicada:** https://cri-leads.onrender.com
 - **Painel publicado:** https://cri-dash-board.onrender.com/
-- **Vídeo de demonstração:** _(colar o link aqui, se houver)_
 
 ---
 
