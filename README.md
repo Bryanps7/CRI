@@ -40,7 +40,7 @@ Painel (React) ◄── GET /leads, /leads/quantityStatus, /leads/quantityOrigi
 ## Etapa 1 · Banco de dados
 
 ### O que construí
-Uma tabela `leads` no Supabase (PostgreSQL) com os campos pedidos e alguns extras que a operação real pede, populada com leads fictícios variados entre origens e status.
+Uma tabela `leads` no Supabase com os campos pedidos e alguns extras que a operação real pede, populada com leads fictícios variados entre origens e status.
 
 | Coluna | Tipo | Observação |
 |---|---|---|
@@ -48,25 +48,19 @@ Uma tabela `leads` no Supabase (PostgreSQL) com os campos pedidos e alguns extra
 | `name` | text | obrigatório |
 | `phone` | bigint | **único**, só dígitos, DDD + número (ex.: `47992564689`) |
 | `property_of_Interest` | text | imóvel de interesse, texto livre |
-| `origin` | text | origem do lead (site, whatsapp, indicação e canais sociais) |
+| `origin` | text | origem do lead (site, indicação e canais sociais) |
 | `status` | text | `novo`, `em contato`, `qualificado` ou `perdido` |
 | `observation` | text | anotações da equipe (editável pelo painel) |
 | `last_contact` | timestamptz | último contato com o lead |
 | `created_at` | timestamptz | data de criação (default `now()`) |
 
-> Atenção: por causa do `I` maiúsculo, a coluna `property_of_Interest` precisa de aspas duplas em SQL puro.
-
 ### Ferramentas e por quê
 - **Supabase:** é o que a CRI usa internamente, tem PostgreSQL de verdade, painel visual para conferir os dados e SDK simples para o Node.
 - **Telefone como `bigint` único:** impede lead duplicado. A mesma pessoa mandando duas mensagens não cria dois registros.
 
-### Dificuldade e como resolvi
-Ao guardar o telefone como número, o WhatsApp entrega números no formato `554891375142` (com DDI 55, e às vezes sem o nono dígito). Criei `utils/phone.js`, que remove o DDI e adiciona o 9 quando necessário, para que o mesmo contato sempre gere o mesmo número no banco.
-
 ### O que faria diferente com mais tempo
-- Usar `CHECK` constraints (ou `enum`) para `status` e `origin`, evitando valores fora do padrão.
-- Padronizar os nomes das colunas (tudo em `snake_case` minúsculo).
 - Separar o histórico de contatos em uma tabela própria, em vez de guardar só o último.
+- Criar uma coluna de etapa do agente, caso ele avançasse na conversa para obter todas as informações básicas do cliente e por fim passar para um vendedor.
 
 ---
 
@@ -85,8 +79,6 @@ ORDER BY quantidade_leads DESC
 LIMIT 1; -- Se quiser apenas o que gerou mais leads
 ```
 
-Sem o `LIMIT 1`, a consulta devolve o ranking completo das origens. **Resultado:** _(colar aqui a origem e a quantidade)_
-
 ### 2. Qual o percentual de leads qualificados em cada origem?
 
 ```sql
@@ -102,8 +94,6 @@ GROUP BY origin
 ORDER BY percentual_qualificados DESC;
 ```
 
-O `FILTER` conta só os qualificados dentro de cada grupo, e o `100.0` força divisão decimal (com `100` inteiro o resultado seria arredondado para baixo). **Resultado:** _(colar aqui a tabela retornada)_
-
 ### 3. Algum outro padrão relevante?
 
 ```sql
@@ -117,17 +107,12 @@ WHERE status = 'qualificado'
 ORDER BY last_contact;
 ```
 
-Cruza status, origem e recência para achar os leads mais quentes: qualificados, vindos de indicação e com contato recente. Essa é a fila que o time comercial deveria priorizar. **Observação:** _(escrever aqui o que você viu no resultado, ex.: quantos leads apareceram e se indicação converte melhor que as outras origens)_
-
 ### Ferramentas e por quê
 SQL direto no editor do Supabase: os dados já estão lá, não precisa exportar nada, e a consulta fica documentada e reproduzível.
 
-### O que faria diferente com mais tempo
-Analisaria também o tempo médio entre `created_at` e o primeiro contato, e a taxa de leads `perdido` por origem, para descobrir onde o funil vaza.
-
 ---
 
-## Etapa 3 · Interface (painel)
+## Etapa 3 · Interface (painel) + back-end
 
 ### O que construí
 Um painel de acompanhamento pensado para ficar aberto numa **TV** (tela cheia 1200×900), com rolagem para uma tabela completa no computador.
@@ -140,17 +125,17 @@ Um painel de acompanhamento pensado para ficar aberto numa **TV** (tela cheia 12
 - Visual alinhado às cores da CRI (laranja e tons claros).
 
 ### Ferramentas e por quê
-- **Lovable + React/TanStack:** a CRI usa Lovable internamente, e ele acelera a construção do visual. Como o código é React padrão, consigo ler, ajustar e versionar tudo no GitHub.
-- **Recharts:** gráficos simples de configurar e que combinam com React.
-- **React Query:** cuida de cache e do refetch automático a cada minuto.
+- **Lovable + React/TanStack:** a CRI usa Lovable internamente, com ele ficou mais fácil de montar a estilização do dashboard.
 
 ### Dificuldade e como resolvi
-A API devolve os campos com nomes como `property_of_Interest`, `origin` e `last_contact`, enquanto a interface trabalha com nomes mais amigáveis. Criei uma camada de normalização em `src/lib/leads.ts` que traduz o formato da API para o formato usado nos componentes, deixando o painel tolerante a pequenas variações de resposta.
+Quando fui exportar o código do lovable, me deparei com um problema que era o build do projeto virar um ".output" que era um resultado diferente do que eu esperava como comum, comecei a fuçar o código do lovable por 30 minutos até encontrar a alteração para voltar ao padrão gerando uma parta "dist".
+Outra dificuldade que encontrei foi na hora dos versionamentos, pois o lovable havia configurado para ser publicado no cloudfire, então demorei uma grande tempo para fazer a alteração para o Render que estou mais familiarizado.
 
 ### O que faria diferente com mais tempo
 - Adicionar login e permissões (hoje o painel é aberto).
 - Trocar o `window.location.reload()` por atualização apenas dos dados.
 - Paginação da tabela no servidor, para volumes maiores de leads.
+- E principalmente aumentar a segurança do dashboard, por trabalhar com leads, é uma informação preciosa que deve ser protegida, nesse caso usaria JsonWebToken e Bcript para autenticação do site.
 
 ---
 
@@ -166,9 +151,8 @@ Um agente que atende o lead **de verdade pelo WhatsApp**, indo além do mínimo 
 5. O lead é cadastrado com status `novo` e a saudação é enviada pelo WhatsApp.
 
 ### Ferramentas e por quê
-- **Whapi:** forma simples de receber e enviar mensagens de WhatsApp por API e webhook.
-- **OpenRouter com modelo gratuito** (padrão: `meta-llama/llama-3.3-70b-instruct:free`): permite trocar de modelo só mudando a variável `OPENROUTER_MODEL`, sem custo durante o desenvolvimento.
-- **Saída em JSON:** uma única chamada à LLM extrai os dados do cadastro **e** escreve a saudação, mantendo tudo consistente.
+- **Whapi:** forma simples de receber e enviar mensagens de WhatsApp por API e webhook. (Ele concede tokens para desenvolvedor testarem a API)
+- **OpenRouter com modelo gratuito** (padrão: `dots-studio/dots-3-note-preview:free`): permite trocar de modelo só mudando a variável `OPENROUTER_MODEL`, sem custo durante o desenvolvimento. (optei por essa LLM como a padrão pois como projeto ela é gratuita e constava no top 26 da categoria de SEO)
 
 ### Cuidados de segurança e confiabilidade
 - **Prompt injection:** o prompt trata a mensagem do contato como *dado*, nunca como instrução. Pedidos para mudar de papel ou revelar o prompt são ignorados.
@@ -181,11 +165,10 @@ Um agente que atende o lead **de verdade pelo WhatsApp**, indo além do mínimo 
 Alguns modelos gastam tokens "pensando" antes de escrever a resposta, e com um limite baixo de `max_tokens` a resposta vinha **vazia** (`finish_reason=length`). Resolvi desativando o raciocínio (`reasoning: { enabled: false }`), aumentando o `max_tokens` para 2048 e tratando explicitamente o caso de resposta vazia ou truncada, com log claro do motivo.
 
 ### O que faria diferente com mais tempo
-- Validar a assinatura/segredo do webhook para aceitar só chamadas da Whapi.
-- Fila de mensagens (com reprocessamento) em vez de processar em memória.
-- Registrar a origem do lead como `whatsapp` no cadastro automático (hoje a origem fica em branco).
+- Validar a assinatura/segredo do webhook. (Não fiz nesse caso pois a Whapi para developer não tinha essa posibilidade)
+- Fila de mensagens (com reprocessamento) em vez de processar em memória. (Assim o Lead pode mandar mensagens separadas e a LLM ira receber todas de uma vez, em vez de executar X vezes)
+- Fazer o bot continuar a conversa afim de descobrir de onde ele veio. (hoje a origem fica em branco).
 - Trocar o modelo gratuito por um mais estável e medir a qualidade das saudações.
-- Testes automatizados para `normalizePhone` e `parseAnalysis`.
 
 ---
 
@@ -199,14 +182,14 @@ Alguns modelos gastam tokens "pensando" antes de escrever a resposta, e com um l
 ### 1. Clonar o repositório
 
 ```bash
-git clone <URL-DO-REPOSITORIO>
-cd <NOME-DO-REPOSITORIO>
+git clone https://github.com/Bryanps7/CRI.git
+cd https://github.com/Bryanps7/CRI.git
 ```
 
 ### 2. Backend (API + webhook)
 
 ```bash
-cd CRI/backend
+cd backend/
 npm install
 ```
 
@@ -222,10 +205,10 @@ PORT=3000
 HOST=0.0.0.0
 CORS_ORIGIN=*
 
-# Automação WhatsApp (opcional para testar só a API e o painel)
+# Automação WhatsApp
 WHAPI_TOKEN=seu-token-da-whapi
 OPENROUTER_API_KEY=sua-chave-do-openrouter
-OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
+OPENROUTER_MODEL=dots-studio/dots-3-note-preview:free
 ```
 
 Inicie o servidor:
@@ -238,12 +221,15 @@ npm start
 
 Teste: abra http://localhost:3000, deve aparecer `{"message":"API funcionando!"}`. Depois teste http://localhost:3000/leads.
 
-> ⚠️ A `SUPABASE_SERVICE_KEY` dá acesso total ao banco. Ela fica só no backend e o `.env` já está no `.gitignore`. **Nunca suba esse arquivo para o GitHub.**
+> ⚠️ A `SUPABASE_SERVICE_KEY` dá acesso total ao banco. Ela fica só no backend e o `.env` já está no `.gitignore`.
 
 ### 3. Painel (frontend)
 
+
 ```bash
-cd cri-dash-board
+git clone https://github.com/Bryanps7/cri-dash-board.git
+cd https://github.com/Bryanps7/cri-dash-board.git
+
 npm install
 npm run dev
 ```
@@ -262,10 +248,9 @@ Para testar a versão de produção do painel: `npm run build` e depois `npm run
 
 ### 4. Testando a automação do WhatsApp (opcional)
 
-1. Com o backend rodando, exponha a porta para a internet (ex.: `ngrok http 3000`).
-2. No painel da Whapi, configure o webhook para `https://SEU-ENDERECO/webhook/whapi` com o evento **messages** (modo `post`).
-3. Mande uma mensagem de outro número para o WhatsApp conectado, por exemplo: *"Oi, sou a Ana, procuro um apartamento de 2 quartos em Itajaí para investir"*.
-4. Confira: o lead aparece na tabela (e no painel) e a Ana recebe a saudação.
+1. No painel da Whapi, configure o webhook para `https://SEU-ENDERECO/webhook/whapi` com o evento **messages** (modo `post`).
+2. Mande uma mensagem de outro número para o WhatsApp conectado, por exemplo: *"Oi, sou a Ana, procuro um apartamento de 2 quartos em Itajaí para investir"*.
+3. Confira: o lead aparece na tabela (e no painel) e a Ana recebe a saudação.
 
 ### Rotas da API
 
@@ -305,4 +290,4 @@ cri-dash-board
 
 ## Uso de IA no desenvolvimento
 
-Usei IA como parte do fluxo de trabalho: Lovable para gerar o painel, e Claude para apoiar a escrita do backend, do prompt do agente e desta documentação. Todas as decisões (estrutura do banco, regras do agente, tratamento de erros) foram revisadas e testadas por mim.
+Usei IA como parte do fluxo de trabalho: Lovable para gerar o painel, e Claude para apoiar no prompt do agente e desta documentação. Todas as decisões (estrutura do banco, regras do agente, tratamento de erros) foram revisadas e testadas por mim.
