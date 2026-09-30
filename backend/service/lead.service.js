@@ -82,6 +82,12 @@ async function getByPhone(phone) {
     return data
 }
 
+async function findByPhone(phone) {
+    const { data, error } = await supabase.from(TABLE).select('*').eq('phone', Number(phone)).maybeSingle()
+    check(error)
+    return data
+}
+
 async function create(body) {
     const lead = format(body)
     const { data, error } = await supabase.from(TABLE).insert(lead).select().single()
@@ -100,4 +106,4 @@ async function registerContact(id) {
     return update(id, { last_contact: new Date().toISOString() })
 }
 
-module.exports = { list, quantityStatus, quantityOrigin, getById, getByPhone, create, update, registerContact }
+module.exports = { list, quantityStatus, quantityOrigin, getById, getByPhone, findByPhone, create, update, registerContact }

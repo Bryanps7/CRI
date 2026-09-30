@@ -12,6 +12,7 @@ app.use(cors({
 
 // Rotas
 app.use('/leads', require('../router/lead.route'))
+app.use('/webhook', require('../router/webhook.route'))
 
 app.get('/', (req, res) => res.json({
     message: 'API funcionando!'
