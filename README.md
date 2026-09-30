@@ -1,7 +1,7 @@
 # CRI Leads: mini sistema de captação de leads com IA
 
 Case técnico · Desenvolvedor(a) Jr, Agentes de IA · CRI Soluções Imobiliárias
-Autor: Bryan
+Autor: Bryan Prinz
 
 Sistema de captação de leads que funciona ponta a ponta: **banco de dados → API → painel de acompanhamento → agente de IA no WhatsApp** que cadastra o lead e envia a primeira mensagem de resposta.
 
@@ -13,7 +13,7 @@ Sistema de captação de leads que funciona ponta a ponta: **banco de dados → 
 | Agente de IA | `CRI/backend/service/llm.service.js` | OpenRouter (modelo gratuito) + Whapi (WhatsApp) |
 
 - **API publicada:** https://cri-leads.onrender.com
-- **Painel publicado:** _(colar o link aqui)_
+- **Painel publicado:** https://cri-dash-board.onrender.com/
 - **Vídeo de demonstração:** _(colar o link aqui, se houver)_
 
 ---
